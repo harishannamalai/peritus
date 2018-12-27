@@ -56,28 +56,29 @@ class TickerChart extends Component {
     state = {
         fromDate: new Date(),
         endDate: new Date(),
+        bseData: [],
+        djiData: [],
         reRender: false
     }
 
     componentDidMount() {
-        axios.get('/indicies/BSE')
+        var sixMonths = new Date();
+        sixMonths.setMonth(sixMonths.getMonth() - 6);
+        this.setState({ fromDate: sixMonths });
+        var queryString = "?from=" + sixMonths.toISOString().split('T')[0] + "&to=" +
+            new Date().toISOString().split('T')[0];
+        console.log(queryString);
+        axios.get('/indicies/BSE' + queryString)
             .then(resolve => {
                 const bseData = resolve.data;
-                this.setState({ bseData });
-                for(let i = 0; i <= bseData.length; i++){
-                    chartdata.labels.push(bseData[i].tickerDate.split("T")[0]);
-                    chartdata.datasets[0].data.push(bseData[i].close);
-                }
+                this.setState({ bseData: bseData });
             }).catch((err) => {
                 console.error(err)
             });
-        axios.get('/indicies/DJI')
+        axios.get('/indicies/DJI' + queryString)
             .then(resolve => {
                 const djiData = resolve.data;
-                this.setState({ djiData });
-                for(let i = 0; i <= djiData.length; i++){
-                    chartdata.datasets[1].data.push(djiData[i].close);
-                }
+                this.setState({ djiData: djiData });
             }).catch((err) => {
                 console.error(err)
             });
@@ -86,6 +87,22 @@ class TickerChart extends Component {
     handleFromDateChange = date => {
         this.setState({ reRender: true });
         this.setState({ fromDate: date })
+        var queryString = "?from=" + this.state.fromDate.toISOString().split('T')[0] + "&to=" +
+        this.state.endDate.toISOString().split('T')[0];
+        axios.get('/indicies/BSE' + queryString)
+            .then(resolve => {
+                const bseData = resolve.data;
+                this.setState({ bseData: bseData });
+            }).catch((err) => {
+                console.error(err)
+            });
+        axios.get('/indicies/DJI' + queryString)
+            .then(resolve => {
+                const djiData = resolve.data;
+                this.setState({ djiData: djiData });
+            }).catch((err) => {
+                console.error(err)
+            });
     };
     handleEndDateChange = date => {
         if (this.state.endDate > this.state.fromDate) {
@@ -94,36 +111,41 @@ class TickerChart extends Component {
         } else {
             this.setState({ reRender: false });
         }
+        var queryString = "?from=" + this.state.fromDate.toISOString().split('T')[0] + "&to=" +
+        this.state.endDate.toISOString().split('T')[0];
+        axios.get('/indicies/BSE' + queryString)
+            .then(resolve => {
+                const bseData = resolve.data;
+                this.setState({ bseData: bseData });
+            }).catch((err) => {
+                console.error(err)
+            });
+        axios.get('/indicies/DJI' + queryString)
+            .then(resolve => {
+                const djiData = resolve.data;
+                this.setState({ djiData: djiData });
+            }).catch((err) => {
+                console.error(err)
+            });
     };
 
 
     render() {
-        console.log(this.state.fromDate.toLocaleDateString("en-US") + " " + this.state.fromDate.toLocaleDateString("en-US") + this.state.reRender);
-        if (this.state.reRender) {
-            var queryString = "?from=" + this.state.fromDate.toISOString().split('T')[0] + "&to=" +
-                this.state.endDate.toISOString().split('T')[0];
-            axios.get('/indicies/BSE' + queryString)
-                .then((resolve) => {
-                    const bseData = resolve.data;
-                this.setState({ bseData });
-                for(let i = 0; i <= bseData.length; i++){
-                    chartdata.labels.push(bseData[i].tickerDate.split("T")[0]);
-                    chartdata.datasets[0].data.push(bseData[i].close);
-                }
-                }).catch((err) => {
-                    console.error(err)
-                });
-            axios.get('/indicies/DJI' + queryString)
-                .then((resolve) => {
-                    const djiData = resolve.data;
-                this.setState({ djiData });
-                for(let i = 0; i <= djiData.length; i++){
-                    chartdata.datasets[1].data.push(djiData[i].close);
-                }
-                }).catch((err) => {
-                    console.error(err)
-                });
+        if (this.state.bseData === undefined || this.state.djiData === undefined) {
+            return null;
         }
+        if(this.state.bseData.length === 0 || this.state.djiData.length ===0){
+            return null;
+        }else{
+            for (let i = 0; i < this.state.bseData.length; i++) {
+                chartdata.labels.push(this.state.bseData[i].tickerDate.split("T")[0]);
+                chartdata.datasets[0].data.push(this.state.bseData[i].close);
+            }
+            for (let i = 0; i < this.state.djiData.length; i++) {
+                chartdata.datasets[1].data.push(this.state.djiData[i].close);
+            }
+        }
+
         return (
             <div className="ticker-chart-display">
                 <div className="ticker-header-bar">
