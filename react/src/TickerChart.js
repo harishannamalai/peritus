@@ -108,10 +108,7 @@ class TickerChart extends Component {
         if (this.state.endDate > this.state.fromDate) {
             this.setState({ endDate: date });
             this.setState({ reRender: true });
-        } else {
-            this.setState({ reRender: false });
-        }
-        var queryString = "?from=" + this.state.fromDate.toISOString().split('T')[0] + "&to=" +
+            var queryString = "?from=" + this.state.fromDate.toISOString().split('T')[0] + "&to=" +
         this.state.endDate.toISOString().split('T')[0];
         axios.get('/indicies/BSE' + queryString)
             .then(resolve => {
@@ -127,6 +124,9 @@ class TickerChart extends Component {
             }).catch((err) => {
                 console.error(err)
             });
+        } else {
+            this.setState({ reRender: false });
+        }
     };
 
 
