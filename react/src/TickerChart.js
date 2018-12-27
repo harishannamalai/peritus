@@ -1,8 +1,11 @@
 import React, { Component } from 'react';
 import './TickerChart.css';
+import 'react-notifications/lib/notifications.css';
 import DatePicker from "react-date-picker";
 import axios from 'axios';
 import { Line } from 'react-chartjs-2';
+import { NotificationContainer, NotificationManager } from 'react-notifications';
+
 
 const chartdata = {
     labels: [],
@@ -58,74 +61,79 @@ class TickerChart extends Component {
         endDate: new Date(),
         bseData: [],
         djiData: [],
-        reRender: false
+        render: true
+    }
+
+    async getData(index, fromDt, toDt) {
+        var queryString = "?from=" + fromDt.toISOString().split('T')[0] + "&to=" +
+            toDt.toISOString().split('T')[0];
+        try {
+            var response = await axios.get('/indicies/' + index + queryString);
+            return response.data;
+        } catch (err) {
+            NotificationManager.error('Failed to fetch Data');
+            console.error(err);
+        }
     }
 
     componentDidMount() {
         var sixMonths = new Date();
         sixMonths.setMonth(sixMonths.getMonth() - 6);
         this.setState({ fromDate: sixMonths });
-        var queryString = "?from=" + sixMonths.toISOString().split('T')[0] + "&to=" +
-            new Date().toISOString().split('T')[0];
-        console.log(queryString);
-        axios.get('/indicies/BSE' + queryString)
-            .then(resolve => {
-                const bseData = resolve.data;
-                this.setState({ bseData: bseData });
+        this.getData('BSE', sixMonths, this.state.endDate)
+            .then((data) => {
+                this.setState({ bseData: data })
             }).catch((err) => {
-                console.error(err)
+                console.error(err);
             });
-        axios.get('/indicies/DJI' + queryString)
-            .then(resolve => {
-                const djiData = resolve.data;
-                this.setState({ djiData: djiData });
+        this.getData('DJI', sixMonths, this.state.endDate)
+            .then((data) => {
+                this.setState({ djiData: data })
             }).catch((err) => {
-                console.error(err)
+                console.error(err);
             });
     }
 
     handleFromDateChange = date => {
-        this.setState({ reRender: true });
-        this.setState({ fromDate: date })
-        var queryString = "?from=" + this.state.fromDate.toISOString().split('T')[0] + "&to=" +
-        this.state.endDate.toISOString().split('T')[0];
-        axios.get('/indicies/BSE' + queryString)
-            .then(resolve => {
-                const bseData = resolve.data;
-                this.setState({ bseData: bseData });
-            }).catch((err) => {
-                console.error(err)
-            });
-        axios.get('/indicies/DJI' + queryString)
-            .then(resolve => {
-                const djiData = resolve.data;
-                this.setState({ djiData: djiData });
-            }).catch((err) => {
-                console.error(err)
-            });
+        if (date !== this.state.fromDate && date < this.state.endDate) {
+            this.setState({ render: true });
+            this.setState({ fromDate: date })
+            this.getData('BSE', date, this.state.endDate)
+                .then((data) => {
+                    this.setState({ bseData: data })
+                }).catch((err) => {
+                    console.error(err);
+                });
+            this.getData('DJI', date, this.state.endDate)
+                .then((data) => {
+                    this.setState({ djiData: data })
+                }).catch((err) => {
+                    console.error(err);
+                });
+        } else {
+            this.setState({ render: false });
+            NotificationManager.error('Invalid Range');
+        }
     };
     handleEndDateChange = date => {
-        if (this.state.endDate > this.state.fromDate) {
+        if (date !== this.state.endDate && date > this.state.fromDate) {
             this.setState({ endDate: date });
-            this.setState({ reRender: true });
-            var queryString = "?from=" + this.state.fromDate.toISOString().split('T')[0] + "&to=" +
-        this.state.endDate.toISOString().split('T')[0];
-        axios.get('/indicies/BSE' + queryString)
-            .then(resolve => {
-                const bseData = resolve.data;
-                this.setState({ bseData: bseData });
-            }).catch((err) => {
-                console.error(err)
-            });
-        axios.get('/indicies/DJI' + queryString)
-            .then(resolve => {
-                const djiData = resolve.data;
-                this.setState({ djiData: djiData });
-            }).catch((err) => {
-                console.error(err)
-            });
+            this.setState({ render: true });
+            this.getData('BSE', this.state.fromDate, date)
+                .then((data) => {
+                    this.setState({ bseData: data })
+                }).catch((err) => {
+                    console.error(err);
+                });
+            this.getData('DJI', this.state.fromDate, date)
+                .then((data) => {
+                    this.setState({ djiData: data })
+                }).catch((err) => {
+                    console.error(err);
+                });
         } else {
-            this.setState({ reRender: false });
+            this.setState({ render: false });
+            NotificationManager.error('Invalid Range');
         }
     };
 
@@ -133,10 +141,12 @@ class TickerChart extends Component {
     render() {
         if (this.state.bseData === undefined || this.state.djiData === undefined) {
             return null;
-        }
-        if(this.state.bseData.length === 0 || this.state.djiData.length ===0){
+        } else if (this.state.bseData.length === 0 || this.state.djiData.length === 0) {
             return null;
-        }else{
+        } else if (this.state.render) {
+            chartdata.labels = [];
+            chartdata.datasets[0].data = [];
+            chartdata.datasets[1].data = [];
             for (let i = 0; i < this.state.bseData.length; i++) {
                 chartdata.labels.push(this.state.bseData[i].tickerDate.split("T")[0]);
                 chartdata.datasets[0].data.push(this.state.bseData[i].close);
@@ -148,6 +158,7 @@ class TickerChart extends Component {
 
         return (
             <div className="ticker-chart-display">
+                <NotificationContainer />
                 <div className="ticker-header-bar">
                     Select Ticker Dates between &nbsp;
                     <DatePicker value={this.state.fromDate} onChange={this.handleFromDateChange} maxDate={new Date()} minDate={new Date('2013-12-15')} />
